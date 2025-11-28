@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dream Canvas | Studio Ultimate</title>
+    <style>
+        :root {
+            --bg-deep: #0f172a;
+            --glass: rgba(30, 41, 59, 0.7);
+            --neon: #818cf8;
+            --neon-glow: #6366f1;
+            --accent: #22d3ee;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --font: system-ui, -apple-system, sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font);
+            background-color: var(--bg-deep);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%), 
+                radial-gradient(at 100% 100%, rgba(34, 211, 238, 0.15) 0px, transparent 50%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .main-box {
+            width: 100%;
+            max-width: 500px; /* Thoda wide kiya taaki editor fit aaye */
+            background: var(--glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: floatUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes floatUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #c084fc, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            min-height: 40px;
+        }
+
+        p.subtitle { text-align: center; color: var(--text-dim); margin-bottom: 24px; font-size: 0.95rem; }
+
+        .input-group { margin-bottom: 20px; }
+        label { display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 8px; font-weight: 500; }
+
+        textarea, select {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            color: #fff;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: 0.2s ease;
+        }
+
+        textarea { min-height: 120px; resize: none; line-height: 1.5; }
+        textarea:focus, select:focus { outline: none; border-color: var(--neon); background: rgba(0, 0, 0, 0.4); }
+
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            border-radius: 16px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-magic {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        .btn-magic:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4); }
+        .btn-magic:disabled { opacity: 0.7; cursor: wait; transform: none; }
+
+        .btn-save { background: transparent; border: 1px solid var(--accent); color: var(--accent); margin-top: 16px; }
+        .btn-save:hover { background: rgba(34, 211, 238, 0.1); }
+
+        .loading-area { display: none; text-align: center; padding: 40px 0; }
+        .pulse-circle { width: 40px; height: 40px; border-radius: 50%; background: var(--neon); margin: 0 auto 16px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(99, 102, 241, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); } }
+
+        .result-area { display: none; margin-top: 24px; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .img-frame {
+            border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px var(--border);
+            background: rgba(0,0,0,0.2); min-height: 200px;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; touch-action: none; /* Important for drag */
+        }
+
+        img, canvas { max-width: 100%; height: auto; display: block; }
+        canvas { display: none; cursor: crosshair; }
+
+        .status-msg { display: none; margin-top: 16px; padding: 12px; border-radius: 12px; background: rgba(239, 68, 68, 0.1); color: #fca5a5; text-align: center; font-size: 0.9rem; }
+        footer { margin-top: 40px; color: var(--text-dim); font-size: 0.9rem; }
+        footer a { color: var(--accent); text-decoration: none; font-weight: 600; padding: 4px 8px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="main-box">
+    <h1>AnujWebs &lt;/&gt;</h1>
+    <p class="subtitle">Turn your wild thoughts into reality.</p>
+    
+    <div class="input-group">
+        <label>What's on your mind?</label>
+        <textarea id="prompt" placeholder="A cozy cabin in a snowy forest with warm lights..."></textarea>
+    </div>
+
+    <div class="options-grid">
+        <div class="input-group">
+            <label>Shape</label>
+            <select id="ratio">
+                <option value="1:1">Square</option>
+                <option value="16:9">Wide</option>
+                <option value="9:16">Tall</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>Detail Level</label>
+            <select id="quality">
+                <option value="small">Fast</option>
+                <option value="medium" selected>Sharp</option>
+                <option value="large">Ultra</option>
+            </select>
+        </div>
+    </div>
+
+    <button id="createBtn" class="btn-magic">Make it Real ✨</button>
+
+    <div id="status" class="status-msg"></div>
+
+    <div id="loader" class="loading-area">
+        <div class="pulse-circle"></div>
+        <p style="color: var(--text-dim); font-size: 0.9rem;">Cooking up magic...</p>
+    </div>
+
+    <div id="output" class="result-area">
+        <div class="img-frame">
+            <img id="art" alt="Generated Art" />
+            <canvas id="studioCanvas"></canvas>
+        </div>
+        
+        <!-- Editor Button (Shows after generation) -->
+        <button id="openEditorBtn" class="btn-save" style="border-color: var(--neon); color: var(--neon); margin-top:15px; display:none;">
+            🎨 Edit Text & Design
+        </button>
+        
+        <button id="saveBtn" class="btn-save">Download Artwork 📥</button>
+    </div>
+</div>
+
+<footer>Developed by <a href="https://t.me/itz_4nuj1" target="_blank">@PyAnuj</a></footer>
+
+<!-- ORIGINAL LOGIC -->
+<script>
+    const dom = {
+        input: document.getElementById('prompt'),
+        ratio: document.getElementById('ratio'),
+        quality: document.getElementById('quality'),
+        btn: document.getElementById('createBtn'),
+        msg: document.getElementById('status'),
+        loader: document.getElementById('loader'),
+        box: document.getElementById('output'),
+        img: document.getElementById('art'),
+        dl: document.getElementById('saveBtn'),
+        editBtn: document.getElementById('openEditorBtn')
+    };
+
+    let activeUrl = null;
+    const sizes = {
+        '1:1': { small: { w: 512, h: 512 }, medium: { w: 1024, h: 1024 }, large: { w: 1536, h: 1536 } },
+        '16:9': { small: { w: 640, h: 360 }, medium: { w: 1280, h: 720 }, large: { w: 1920, h: 1080 } },
+        '9:16': { small: { w: 360, h: 640 }, medium: { w: 720, h: 1280 }, large: { w: 1080, h: 1920 } }
+    };
+
+    dom.btn.onclick = async () => {
+        const text = dom.input.value.trim();
+        if (!text) { notify("Hey, you need to describe something first!"); return; }
+
+        reset();
+        dom.loader.style.display = 'block';
+        dom.btn.disabled = true;
+
+        try {
+            const r = dom.ratio.value;
+            const q = dom.quality.value;
+            const s = sizes[r][q];
+            const seed = Math.floor(Math.random() * 1000000);
+            
+            // Clean prompt for API to avoid baked text if we want to add it manually
+            const safePrompt = encodeURIComponent(`${text} (aspect:${r})`);
+            const api = `https://image.pollinations.ai/prompt/${safePrompt}?width=${s.w}&height=${s.h}&seed=${seed}&nologo=true`;
+
+            const resp = await fetch(api);
+            if (!resp.ok) throw new Error("Server hiccup");
+
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            showArt(url);
+
+        } catch (e) {
+            notify("Oops, something went wrong. Try again?");
+            dom.loader.style.display = 'none';
+            dom.btn.disabled = false;
+        }
+    };
+
+    dom.dl.onclick = () => { if(activeUrl) downloadLink(activeUrl); };
+
+    function downloadLink(url) {
+        const a = document.createElement('a'); a.href = url; a.download = `dream_${Date.now()}.jpg`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+
+    function showArt(url) {
+        if (activeUrl) URL.revokeObjectURL(activeUrl);
+        activeUrl = url;
+        dom.img.src = activeUrl;
+        dom.img.onload = () => {
+            dom.loader.style.display = 'none';
+            dom.box.style.display = 'block';
+            dom.btn.disabled = false;
+            dom.dl.style.display = 'block';
+            dom.editBtn.style.display = 'block'; // Show Edit Button
+            dom.box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            
+            // Trigger Auto-Text if YouTube Mode is ON
+            if(window.checkYouTubeMode) window.checkYouTubeMode();
+        };
+    }
+
+    function notify(txt) { dom.msg.textContent = txt; dom.msg.style.display = 'block'; }
+    function reset() { dom.msg.style.display = 'none'; dom.box.style.display = 'none'; }
+</script>
+
+
+<!-- ========================================== -->
+<!--       NEW FEATURES ADDON (@PyAnuj)         -->
+<!-- ========================================== -->
+
+<style>
+    /* Light Mode */
+    body.light-mode {
+        --bg-deep: #f1f5f9; --glass: rgba(255, 255, 255, 0.85); --text: #1e293b;
+        --text-dim: #64748b; --border: rgba(0, 0, 0, 0.1);
+        background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1), transparent 50%);
+    }
+    body.light-mode textarea, body.light-mode select, body.light-mode input[type="text"] {
+        background: white; color: black; border-color: #cbd5e1;
+    }
+
+    /* Toolbar Styling */
+    .tools-row { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; justify-content: flex-end; }
+    .mini-btn {
+        padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+        border-radius: 8px; color: var(--text-dim); font-size: 0.8rem; cursor: pointer; transition: 0.2s;
+    }
+    .mini-btn:hover { background: rgba(255,255,255,0.1); color: var(--accent); border-color: var(--accent); }
+    .yt-btn.active-mode { background: #dc2626; color: white; border-color: #ef4444; box-shadow: 0 0 12px rgba(220, 38, 38, 0.5); }
+    body.light-mode .mini-btn { color: #475569; border-color: #cbd5e1; }
+
+    /* STUDIO PANEL */
+    .studio-panel {
+        margin-top: 15px; padding: 20px; border: 1px solid var(--border);
+        background: rgba(0,0,0,0.4); border-radius: 16px; display: none;
+    }
+    body.light-mode .studio-panel { background: rgba(255,255,255,0.6); }
+
+    .control-row { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; }
+    .studio-input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.3); color: white; }
+    body.light-mode .studio-input { background: white; color: black; }
+    
+    .font-select { padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--border); }
+    body.light-mode .font-select { background: white; color: black; }
+
+    .layer-controls { display: flex; gap: 10px; margin-bottom: 15px; }
+    .add-btn { background: var(--neon); color: white; border: none; flex: 1; }
+    .del-btn { background: #ef4444; color: white; border: none; width: 40px; }
+
+    /* Theme Toggle */
+    .theme-toggle {
+        position: fixed; top: 20px; right: 20px; width: 44px; height: 44px; background: var(--glass);
+        border-radius: 50%; border: 1px solid var(--border); cursor: pointer; z-index: 100;
+        display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    }
+    
+    /* History Tags */
+    .history-panel { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); display: none; }
+    .history-tag {
+        display: inline-block; background: rgba(0,0,0,0.2); padding: 6px 12px;
+        border-radius: 20px; font-size: 0.8rem; margin: 4px; cursor: pointer; color: var(--text-dim);
+    }
+</style>
+
+<script>
+    (function() {
+        // --- SETUP ---
+        const textArea = document.getElementById('prompt');
+        const mainBox = document.querySelector('.main-box');
+        const outputBox = document.getElementById('output');
+        const imgElement = document.getElementById('art');
+        const canvas = document.getElementById('studioCanvas');
+        const ctx = canvas.getContext('2d');
+        const openEditorBtn = document.getElementById('openEditorBtn');
+        const origDlBtn = document.getElementById('saveBtn');
+        const h1 = document.querySelector('h1');
+
+        // Toolbar Buttons
+        const toolBar = document.createElement('div'); toolBar.className = 'tools-row';
+        const btnEnhance = createBtn('🪄 Enhance', enhancePrompt);
+        const btnYoutube = createBtn('🔴 YouTube Mode', toggleYouTubeMode); btnYoutube.classList.add('yt-btn');
+        const btnCopy = createBtn('📋 Copy', copyPrompt);
+        const btnHistory = createBtn('🕒 History', toggleHistory);
+        
+        textArea.parentNode.insertBefore(toolBar, textArea.nextSibling);
+        toolBar.append(btnEnhance, btnYoutube, btnHistory, btnCopy);
+
+        // Studio UI (Hidden by default)
+        const studio = document.createElement('div');
+        studio.className = 'studio-panel';
+        studio.innerHTML = `
+            <div class="layer-controls">
+                <button id="st-add" class="mini-btn add-btn">+ Add Text</button>
+                <button id="st-del" class="mini-btn del-btn">🗑️</button>
+            </div>
+            <input type="text" id="st-text" class="studio-input" placeholder="Tap a text to edit..." style="margin-bottom:10px; width:100%;">
+            <div class="control-row">
+                <select id="st-font" class="font-select">
+                    <option value="Impact">Impact</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Courier New">Courier</option>
+                    <option value="Brush Script MT">Brush</option>
+                </select>
+                <input type="color" id="st-color" value="#ffffff" style="width:40px; height:40px; border:none; background:none;">
+            </div>
+            <div class="options-grid">
+                <div><span style="font-size:0.8rem">Size</span><input type="range" id="st-size" min="20" max="300" value="100" style="width:100%"></div>
+                <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="st-shadow" checked> <span style="font-size:0.8rem">Shadow</span></div>
+            </div>
+            <button id="st-download" class="btn-magic" style="margin-top:15px;">Save & Download 💾</button>
+            <button id="st-close" class="mini-btn" style="margin-top:10px; width:100%;">Close Editor</button>
+        `;
+        outputBox.appendChild(studio);
+
+        // History & Theme
+        const historyArea = document.createElement('div'); historyArea.className = 'history-panel'; historyArea.id = 'history-list';
+        mainBox.appendChild(historyArea);
+        const themeBtn = document.createElement('button'); themeBtn.className = 'theme-toggle'; themeBtn.innerHTML = '🌙'; themeBtn.onclick = toggleTheme;
+        document.body.appendChild(themeBtn);
+
+        function createBtn(t, f) { const b=document.createElement('button'); b.innerHTML=t; b.className='mini-btn'; b.onclick=f; b.style.width='auto'; return b; }
+
+        // --- STUDIO LOGIC ---
+        let layers = [];
+        let activeIndex = -1;
+        let isDragging = false;
+        let isYTMode = false;
+
+        // Open Editor
+        openEditorBtn.onclick = () => {
+            imgElement.style.display = 'none';
+            canvas.style.display = 'block';
+            studio.style.display = 'block';
+            openEditorBtn.style.display = 'none';
+            origDlBtn.style.display = 'none';
+            
+            canvas.width = imgElement.naturalWidth;
+            canvas.height = imgElement.naturalHeight;
+            
+            // If empty, add default text
+            if(layers.length === 0) {
+                 // Nothing happened, user opened manualy
+            }
+            draw();
+        };
+
+        // Close Editor
+        document.getElementById('st-close').onclick = () => {
+            imgElement.style.display = 'block';
+            canvas.style.display = 'none';
+            studio.style.display = 'none';
+            openEditorBtn.style.display = 'block';
+            origDlBtn.style.display = 'block';
+        };
+
+        // Add Layer
+        document.getElementById('st-add').onclick = () => addLayer("New Text");
+        function addLayer(txt) {
+            layers.push({ text: txt, x: canvas.width/2, y: canvas.height/2, size: 100, color: "#ffffff", font: "Impact", shadow: true });
+            activeIndex = layers.length - 1;
+            syncUI(); draw();
+        }
+
+        // Delete Layer
+        document.getElementById('st-del').onclick = () => {
+            if(activeIndex > -1) { layers.splice(activeIndex, 1); activeIndex = -1; syncUI(); draw(); }
+        };
+
+        // Inputs Update
+        const els = { text: document.getElementById('st-text'), font: document.getElementById('st-font'), color: document.getElementById('st-color'), size: document.getElementById('st-size'), shadow: document.getElementById('st-shadow') };
+        function updateLayer() {
+            if(activeIndex === -1) return;
+            const l = layers[activeIndex];
+            l.text = els.text.value; l.font = els.font.value; l.color = els.color.value; l.size = parseInt(els.size.value); l.shadow = els.shadow.checked;
+            draw();
+        }
+        Object.values(els).forEach(el => { el.addEventListener('input', updateLayer); });
+
+        function syncUI() {
+            if(activeIndex === -1) { els.text.value = ""; els.text.disabled = true; return; }
+            els.text.disabled = false;
+            const l = layers[activeIndex];
+            els.text.value = l.text; els.font.value = l.font; els.color.value = l.color; els.size.value = l.size; els.shadow.checked = l.shadow;
+        }
+
+        // Draw Function
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imgElement, 0, 0);
+            const scale = canvas.width / 1280; 
+
+            layers.forEach((l, i) => {
+                const fs = l.size * scale;
+                ctx.font = `900 ${fs}px ${l.font}, sans-serif`;
+                ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                
+                if(l.shadow) { ctx.shadowColor="rgba(0,0,0,0.8)"; ctx.shadowBlur=15; ctx.shadowOffsetX=5; ctx.shadowOffsetY=5; } 
+                else { ctx.shadowColor="transparent"; }
+
+                if(i === activeIndex) { // Selection box
+                    ctx.strokeStyle = "rgba(0, 255, 255, 0.6)"; ctx.lineWidth = 3; 
+                    const m = ctx.measureText(l.text);
+                    ctx.strokeRect(l.x - m.width/2 - 10, l.y - fs/2 - 10, m.width + 20, fs + 20);
+                }
+
+                ctx.fillStyle = l.color; ctx.fillText(l.text, l.x, l.y);
+                ctx.shadowColor="transparent"; ctx.lineWidth=fs*0.04; ctx.strokeStyle="black"; ctx.strokeText(l.text, l.x, l.y);
+            });
+        }
+
+        // Touch & Drag (No Fixing lines!)
+        function getPos(e) {
+            const r = canvas.getBoundingClientRect();
+            const s = canvas.width / r.width;
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: (cx - r.left)*s, y: (cy - r.top)*s };
+        }
+
+        function handleStart(e) {
+            const pos = getPos(e);
+            for(let i=layers.length-1; i>=0; i--) {
+                const l = layers[i];
+                if(Math.hypot(pos.x - l.x, pos.y - l.y) < 200) {
+                    activeIndex = i; isDragging = true; syncUI(); draw(); e.preventDefault(); return;
+                }
+            }
+            activeIndex = -1; syncUI(); draw();
+        }
+
+        function handleMove(e) {
+            if(!isDragging || activeIndex===-1) return;
+            e.preventDefault(); const p = getPos(e); layers[activeIndex].x = p.x; layers[activeIndex].y = p.y; draw();
+        }
+
+        canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('mouseup', ()=>isDragging=false);
+        canvas.addEventListener('touchstart', handleStart, {passive:false}); canvas.addEventListener('touchmove', handleMove, {passive:false}); canvas.addEventListener('touchend', ()=>isDragging=false);
+
+        document.getElementById('st-download').onclick = () => {
+            const a = document.createElement('a'); a.download = `edited_${Date.now()}.jpg`; a.href = canvas.toDataURL('image/jpeg', 0.95); a.click();
+        };
+
+        // --- YOUTUBE AUTO MODE ---
+        // This solves "Edit Text Written by AI" (We write it, so user can edit it)
+        window.checkYouTubeMode = () => {
+            layers = []; activeIndex = -1; // Clear old
+            if(isYTMode) {
+                // Auto generate catchy text based on prompt keywords
+                const words = textArea.value.split(' ');
+                let catchPhrase = "AMAZING!";
+                if(words.length > 3) catchPhrase = (words[0] + " " + words[1]).toUpperCase() + "!";
+                
+                // Add this text layer automatically
+                addLayer(catchPhrase);
+                
+                // Open Editor immediately so user sees it and can edit typo
+                setTimeout(() => openEditorBtn.click(), 500);
+            }
+        };
+
+        function toggleYouTubeMode() {
+            isYTMode = !isYTMode;
+            if(isYTMode) {
+                btnYoutube.classList.add('active-mode'); btnYoutube.innerHTML = "🔴 YT Active";
+                document.getElementById('ratio').value = '16:9';
+                document.getElementById('quality').value = 'large';
+            } else {
+                btnYoutube.classList.remove('active-mode'); btnYoutube.innerHTML = "🔴 YouTube Mode";
+                document.getElementById('ratio').value = '1:1';
+            }
+        }
+
+        // --- UTILS (Enhance, History, Theme, Copy) ---
+        function enhancePrompt() {
+            const p = textArea.value; if(!p) return;
+            textArea.value = p + ", 8k resolution, cinematic lighting, highly detailed, vibrant colors";
+            const b=btnEnhance; b.innerHTML="✨"; setTimeout(()=>b.innerHTML="🪄 Enhance",1000);
+        }
+
+        function toggleHistory() {
+             const list = document.getElementById('history-list');
+             list.innerHTML = '';
+             let hist = JSON.parse(localStorage.getItem('dream_history')||'[]');
+             hist.forEach(t => {
+                 let s = document.createElement('span'); s.className='history-tag'; s.innerText=t.substring(0,25)+'...';
+                 s.onclick = () => textArea.value = t;
+                 list.appendChild(s);
+             });
+             list.style.display = list.style.display==='block'?'none':'block';
+        }
+        
+        // Save history on generate
+        document.getElementById('createBtn').addEventListener('click', ()=>{
+            let h = JSON.parse(localStorage.getItem('dream_history')||'[]');
+            if(textArea.value && !h.includes(textArea.value)) { h.unshift(textArea.value); localStorage.setItem('dream_history', JSON.stringify(h)); }
+        });
+
+        function copyPrompt() { navigator.clipboard.writeText(textArea.value); btnCopy.innerHTML="✅"; setTimeout(()=>btnCopy.innerHTML="📋 Copy",1000); }
+
+        if(localStorage.getItem('dream_theme')==='light') { document.body.classList.add('light-mode'); themeBtn.innerHTML='☀️'; }
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            themeBtn.innerHTML = document.body.classList.contains('light-mode')?'☀️':'🌙';
+            localStorage.setItem('dream_theme',document.body.classList.contains('light-mode')?'light':'dark');
+        }
+
+        // Typing Effect
+        const originalTitle = h1.textContent; h1.textContent=''; let ci=0;
+        function typeWriter() { if(ci<originalTitle.length){ h1.textContent+=originalTitle.charAt(ci++); setTimeout(typeWriter,100); }}
+        setTimeout(typeWriter,500);
+
+    })();
+</script>
+
+</body>
+</html>
